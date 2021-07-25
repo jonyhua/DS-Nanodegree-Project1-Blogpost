@@ -27,7 +27,7 @@ There are 1 notebooks available here to showcase work related to the above quest
 
 ## Results<a name="results"></a>
 
-The main findings of the code can be found at the post available [here](https://).
+The main findings of the code can be found at the post available [here](https://medium.com/@jonyhwa/what-can-we-learn-about-seattle-from-the-open-airbnb-data-deb504414058).
 
 ## Licensing, Authors, Acknowledgements<a name="licensing"></a>
 
