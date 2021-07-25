@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[23]:
+# # Project: Write a Data Science Blog Post - Airbnb Seattle
+
+# In[36]:
 
 
+# prepare packages
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -11,79 +14,89 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error
 import seaborn as sns
-import datetime
+from datetime import datetime
+from datetime import date
 get_ipython().run_line_magic('matplotlib', 'inline')
 from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
 
 
-# # 0. Problem Formulation
+# # 1. Business Understanding
 
+# Since 2008, guests and hosts have used Airbnb to travel in a more unique, personalized way. As part of the Airbnb Inside initiative, this dataset describes the listing activity of homestays in Seattle, WA.
+# 
+
+# Questions to address
 # 1. What are the busiest times of the year to visit Seattle? By how much do prices spike?
 # 2. Can you describe the vibe of each Seattle neighborhood using listing descriptions?
 # 3. What are the factors influencing review score?
 
-# # 1. Data Extraction and Exploratroy Analysis
+# # 2. Data Extraction
 
-# In[3]:
+# In[2]:
 
 
 pd.set_option('display.max_columns', None)
 
 
-# In[4]:
+# In[3]:
 
 
 listing = pd.read_csv('listings.csv')
-listing.head(10)
+listing.head()
 
 
-# In[5]:
+# In[4]:
 
 
 listing.describe()
 
 
-# In[6]:
+# In[5]:
 
 
 reviews = pd.read_csv('reviews.csv')
 reviews.head()
 
 
-# In[7]:
+# In[6]:
 
 
 calendar = pd.read_csv('calendar.csv')
 calendar.head()
 
 
-# In[8]:
+# In[7]:
 
 
 calendar.describe(include='all')
 
 
-# In[9]:
+# # 3 Prepare Data
+
+# # 3.1 Prepare Data and Analysis for Question 1
+
+# In[8]:
 
 
 calendar_reduced=calendar.drop(['price'],axis=1)
 
 
-# In[10]:
+# In[9]:
 
 
 calendar_reduced=calendar_reduced.groupby(['date','available']).count()
 
 
+# In[10]:
+
+
+calendar_reduced.head()
+
+
 # In[11]:
 
 
-calendar_reduced
-
-
-# In[12]:
-
-
+#designing a metric to measure Airbnb popularity
 calendar_reduced["avail_to_unavail_ratio"] = calendar_reduced.groupby(level=0)['listing_id'].transform(lambda x: x[1]/ x[0])
 calendar_reduced=calendar_reduced.drop('listing_id',axis=1)
 calendar_reduced=calendar_reduced.reset_index(level=1, drop=True)
@@ -91,7 +104,7 @@ calendar_reduced=calendar_reduced.drop_duplicates()
 calendar_reduced
 
 
-# In[13]:
+# In[12]:
 
 
 calendar_reduced.reset_index(level=0, inplace=True)
@@ -99,14 +112,16 @@ calendar_reduced['date']  = pd.to_datetime(calendar_reduced['date'])
 sns.lineplot(x="date", y="avail_to_unavail_ratio", data= calendar_reduced)
 
 
-# In[14]:
+# Answer to Question 1: The Seattle Airbnb is busiest during the summer, from July to Aug. 
+
+# In[13]:
 
 
 calendar_reduced_2=calendar.drop(['available','listing_id'],axis=1)
 calendar_reduced_2=calendar_reduced_2.dropna(how='any')
 
 
-# In[15]:
+# In[14]:
 
 
 def clean_currency(x):
@@ -118,7 +133,7 @@ def clean_currency(x):
     return(x)
 
 
-# In[16]:
+# In[15]:
 
 
 calendar_reduced_2['price'] = calendar_reduced_2['price'].apply(clean_currency).astype('float')
@@ -127,80 +142,63 @@ calendar_reduced_2['date']  = pd.to_datetime(calendar_reduced_2['date'])
 sns.lineplot(x="date", y="price", data= calendar_reduced_2)
 
 
-# - Question 1: The Seattle Airbnb is busiest during the summer, from July to Aug. 
-# - Question 2: The price increases on average about 10% during that time.
+# Answer to Question 1: The price increases on average about 10% during that time.
 
-# In[17]:
+# # 3.2 Prepare Data and Analysis for Question 2
+
+# In[16]:
 
 
 listing.head()
 
 
-# In[18]:
+# In[17]:
 
 
 listing.shape
 
 
-# In[19]:
+# In[18]:
 
 
+# Getting key features of this analysis
 listing_reduced=listing[['id','name','summary','description','neighborhood_overview','neighbourhood_group_cleansed','property_type','room_type','review_scores_rating']]
 
 
-# In[20]:
+# In[19]:
 
 
 listing_reduced.head()
 
 
-# In[21]:
+# In[20]:
 
 
 neighbourhood=listing_reduced.groupby('neighbourhood_group_cleansed')
 
 
+# In[21]:
+
+
+neighbourhood.mean().sort_values(by="review_scores_rating",ascending=False).head(10)
+
+
 # In[22]:
-
-
-neighbourhood.mean().sort_values(by="review_scores_rating",ascending=False).head(10)
-
-
-# In[28]:
-
-
-text = listing_reduced.description[0]
-
-# Create and generate a word cloud image:
-wordcloud = WordCloud().generate(text)
-
-# Display the generated image:
-plt.imshow(wordcloud, interpolation='bilinear')
-plt.axis("off")
-plt.show()
-
-
-# In[43]:
-
-
-neighbourhood.mean().sort_values(by="review_scores_rating",ascending=False).head(10)
-
-
-# In[47]:
 
 
 listing_reduced.neighbourhood_group_cleansed.unique()
 
 
-# In[50]:
+# In[23]:
 
 
-neighbourhood=listing_reduced.neighbourhood_group_cleansed.unique()
+# Getting the list of neighbourhood of interest
+neighbourhood=['Downtown','University District','Central Area','Ballard','Magnolia',
+            'Rainier Valley','Beacon Hill','Cascade']
 
 
-# In[53]:
 
-
+# Plotting wordcloud for each neighbourhood
 for n in neighbourhood:  
     text = listing_reduced[listing_reduced['neighbourhood_group_cleansed']==n].description.values
     stopwords = set(STOPWORDS)
@@ -212,19 +210,20 @@ for n in neighbourhood:
     plt.show()
 
 
-# Question 2 anwer above
+# Looks like we have many insights!
 
-# # Modeling - Data cleaning
+# # 3.3 Exploratory Analysis and Data Cleaning for Modeling
 
-# In[175]:
+# In[103]:
 
 
 listing.head()
 
 
-# In[176]:
+# In[53]:
 
 
+# reduce to core features, considering null values and correlations covered later
 listing_df=listing[['host_id','host_since','host_response_time','host_response_rate','host_about','host_acceptance_rate','host_is_superhost',
                     'room_type','host_neighbourhood','host_listings_count','host_total_listings_count','host_verifications','host_has_profile_pic','host_identity_verified',
                     'neighbourhood_cleansed',
@@ -237,31 +236,32 @@ listing_df=listing[['host_id','host_since','host_response_time','host_response_r
                     'reviews_per_month']]
 
 
-# In[177]:
+# In[54]:
 
 
 listing_df.head()
 
 
-# In[178]:
+# In[27]:
 
 
 listing_df.shape
 
 
-# In[179]:
+# In[28]:
 
 
+# checking null values
 np.sum(listing_df.isnull())/listing_df.shape[0]
 
 
-# In[180]:
+# In[29]:
 
 
 listing_df.dtypes
 
 
-# In[181]:
+# In[30]:
 
 
 corr=listing_df.corr() # Calculates correlation matrix
@@ -280,68 +280,93 @@ sns.heatmap(corr, mask=mask, cmap=cmap, vmax=1, center=0,vmin=-1,
             annot=True,square=True, linewidths=.5, cbar_kws={"shrink": .5})
 
 
-# In[182]:
+# Based on high correlations, we dropped these columns: host_total_listings_count, accommodates, availability_60, availability_90
+
+# In[55]:
 
 
 listing_df=listing_df.drop(columns=['host_total_listings_count','accommodates','availability_60','availability_90'])
 
 
-# In[183]:
+# In[45]:
 
 
+listing_df.review_scores_rating.hist(bins=100)
+
+
+# Taking a look at the distribution of score. 
+
+# In[56]:
+
+
+# dropping variables related to review_scores to avoid leakage
 listing_df=listing_df.dropna(subset=['review_scores_rating','review_scores_accuracy','review_scores_cleanliness','review_scores_checkin','review_scores_communication','review_scores_location','review_scores_value'])
 
 
-# In[184]:
+# In[57]:
+
+
+#listing_df.head()
+
+
+# In[58]:
+
+
+# dropping varaible that is not addding value
+listing_df=listing_df.drop(columns=['square_feet','weekly_price','monthly_price','security_deposit','host_about','host_verifications','security_deposit','host_id'])
+
+
+# In[59]:
+
+
+# creating a feature as days since hosting from the host since date
+listing_df['days_since_host']=(datetime.today()- pd.to_datetime(listing_df['host_since'])).dt.days
+listing_df=listing_df.drop(columns=['host_since'])
+
+
+# In[60]:
+
+
+# we corrected the formating of percentage numbers from string to float
+s = listing_df['host_response_rate'].str.replace(r'%', r'').astype('float')/100
+
+
+# now we convert the host_response_rate into numeric. As the original number has a '%', we will get all NAs, therefore we are filling the numbers with s variable created above
+listing_df['host_response_rate'] = pd.to_numeric(listing_df['host_response_rate'], errors='coerce').fillna(s)
+
+
+# In[61]:
+
+
+# we corrected the formating of percentage numbers from string to float
+s =listing_df['host_acceptance_rate'].str.replace(r'%', r'').astype('float')/100
+
+# now we convert the host_acceptance_rate into numeric. As the original number has a '%', we will get all NAs, therefore we are filling the numbers with s variable created above
+listing_df['host_acceptance_rate'] = pd.to_numeric(listing_df['host_acceptance_rate'], errors='coerce').fillna(s)
+
+
+# In[62]:
 
 
 listing_df.head()
 
 
-# In[185]:
+# In[63]:
 
 
-listing_df=listing_df.drop(columns=['square_feet','weekly_price','monthly_price','security_deposit','host_about','host_verifications','security_deposit','host_id'])
-
-
-# In[186]:
-
-
-from datetime import datetime
-from datetime import date
-listing_df['days_since_host']=(datetime.today()- pd.to_datetime(listing_df['host_since'])).dt.days
-listing_df=listing_df.drop(columns=['host_since'])
-
-
-# In[188]:
-
-
-s = listing_df['host_response_rate'].str.replace(r'%', r'').astype('float')/100
-listing_df['host_response_rate'] = pd.to_numeric(listing_df['host_response_rate'], errors='coerce').fillna(s)
-
-
-# In[189]:
-
-
-s = listing_df['host_acceptance_rate'].str.replace(r'%', r'').astype('float')/100
-listing_df['host_acceptance_rate'] = pd.to_numeric(listing_df['host_acceptance_rate'], errors='coerce').fillna(s)
-
-
-# In[190]:
-
-
+# cleaning currency variable
 listing_df['price'] = listing_df['price'].apply(clean_currency).astype('float')
 listing_df['cleaning_fee'] = listing_df['cleaning_fee'].apply(clean_currency).astype('float')
 listing_df['extra_people'] = listing_df['extra_people'].apply(clean_currency).astype('float')
 
 
-# In[191]:
+# In[64]:
 
 
 listing_df.head()
 
 
-# In[192]:
+# In[65]:
 
 
 corr=listing_df.corr() # Calculates correlation matrix
@@ -360,16 +385,31 @@ sns.heatmap(corr, mask=mask, cmap=cmap, vmax=1, center=0,vmin=-1,
             annot=True,square=True, linewidths=.5, cbar_kws={"shrink": .5})
 
 
-# In[193]:
+# Looks good to me
+
+# In[66]:
 
 
+# creating dummies for ameniities field
 listing_df_comb = pd.concat([listing_df, listing_df['amenities'].str.get_dummies(sep=',').add_prefix('amenities_')], axis = 1).drop(['amenities','amenities_{}'], 1)
 
 
-# In[194]:
+# In[102]:
 
 
 def create_dummy_df(df, cat_cols,num_cols, dummy_na):
+        '''
+        INPUT
+        df - pandas dataframe 
+        cat_cols - columns that are categories
+        num_cols - columns that are numeric
+        dummy_na - boolean for creating column for na
+        
+        OUTPUT
+        df - pandas dataframe 
+        
+        Create dummy columns for all the categorical variables in X, drop the original columns
+        '''
 
         for col in cat_cols:
             try:
@@ -380,13 +420,14 @@ def create_dummy_df(df, cat_cols,num_cols, dummy_na):
         for col in num_cols:
             try:
                 fill_mean = lambda col: col.fillna(col.mean())
+                # given data availability is good and lack of other feasible solutions, we will use mean to fill na
                 df=pd.concat([df.drop(col, axis=1),df[[col]].apply(fill_mean, axis=0)],axis=1)
             except:
                 continue
         return df
 
 
-# In[195]:
+# In[68]:
 
 
 def clean_data(df):
@@ -429,27 +470,28 @@ def clean_data(df):
 X, y = clean_data(listing_df_comb)    
 
 
-# In[196]:
+# In[69]:
 
 
 X.head()
 
 
-# In[200]:
+# In[70]:
 
 
+#checking na
 sum(np.sum(X.isnull())>0)
 
 
-# In[201]:
+# In[71]:
 
 
 y.head()
 
 
-# ## Linear Regression
+# # 4. Modeling - 1) Linear Regression
 
-# In[215]:
+# In[72]:
 
 
 from sklearn.linear_model import LinearRegression
@@ -458,20 +500,21 @@ from sklearn.metrics import r2_score, mean_squared_error
 import sklearn.metrics as metrics
 
 
-# In[312]:
+# In[73]:
 
 
 listing_df.head()
 
 
-# In[313]:
+# In[77]:
 
 
+# reducing features for linear regression 
 listing_df_lm_reduced=listing_df.drop(['amenities','has_availability','availability_30','availability_365',
                                        'number_of_reviews','reviews_per_month'],axis=1)
 
 
-# In[404]:
+# In[78]:
 
 
 listing_df_lm_reduced=listing_df[['host_response_rate','host_response_time','price',
@@ -483,13 +526,15 @@ listing_df_lm_reduced=listing_df[['host_response_rate','host_response_time','pri
                                   'host_listings_count']]
 
 
-# In[405]:
+# In[79]:
 
 
 sns.heatmap(listing_df_lm_reduced.corr(), annot=True, fmt=".2f");
 
 
-# In[406]:
+# Looks good
+
+# In[80]:
 
 
 def clean_data(df):
@@ -537,41 +582,43 @@ def clean_data(df):
 X, y = clean_data(listing_df_lm_reduced) 
 
 
-# In[407]:
+# In[81]:
 
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.30, random_state=42)
 
 
-# In[516]:
+# In[84]:
 
 
-print(X_train_2.shape)
-print(y_train_2.shape)
-print(X_test_2.shape)
-print(y_test_2.shape)
+print(X_train.shape)
+print(y_train.shape)
+print(X_test.shape)
+print(y_test.shape)
 
 
-# In[409]:
+# In[85]:
 
 
 X_train.head()
 
 
-# In[414]:
+# In[86]:
 
 
 clf = LinearRegression(normalize=True)
 clf.fit(X_train,y_train)
 
 
-# In[415]:
+# In[87]:
 
 
 y_test_preds = clf.predict(X_test)
 
 
-# In[421]:
+# # 5. Model Evalution - Linear Regression
+
+# In[88]:
 
 
 print(r2_score(y_train, clf.predict(X_train)))
@@ -579,7 +626,9 @@ print(r2_score(y_test, y_test_preds)) #In this case we are predicting a continuo
 print(mean_squared_error(y_test, y_test_preds)) #metrics to assess fit include Rsquared and MSE.
 
 
-# In[417]:
+# R-square about 10% and MSE is about 36.3
+
+# In[91]:
 
 
 def coef_weights(coefficients, X_train):
@@ -608,37 +657,38 @@ coef_df = coef_weights(clf.coef_, X_train)
 coef_df.sort_values('coefs', ascending=False)
 
 
-# In[425]:
+# In[92]:
 
 
+# running OLS to validate results seen, and present the confidence intervals for variables
 import statsmodels.api as sm
 X_train_new = sm.add_constant(X_train)
 results = sm.OLS(y_train,X_train_new).fit()
 results.summary()  
 
 
-# ## Gradiant Boost
+# # 4. Modeling - 2) Gradiant Boost
 
-# In[489]:
+# In[93]:
 
 
 from sklearn import datasets, ensemble
 from sklearn.inspection import permutation_importance
 
 
-# In[490]:
+# In[94]:
 
 
 listing_df_comb.head()
 
 
-# In[543]:
+# In[95]:
 
 
 listing_df.head()
 
 
-# In[544]:
+# In[96]:
 
 
 def clean_data(df):
@@ -668,7 +718,7 @@ def clean_data(df):
                       'review_scores_value','neighbourhood_cleansed','neighbourhood_group_cleansed',
                      'zipcode','host_neighbourhood',
                      'has_availability','availability_30','availability_365',
-                                       'number_of_reviews','reviews_per_month','calendar_updated','amenities'])
+                                       'number_of_reviews','reviews_per_month','calendar_updated','amenities','host_listings_count'])
                      
     #'calendar_updated','beds'
     
@@ -689,12 +739,14 @@ def clean_data(df):
 X_2, y_2 = clean_data(listing_df) 
 
 
-# In[549]:
+# In[97]:
 
 
 X_train_2, X_test_2, y_train_2, y_test_2 = train_test_split(
     X_2, y_2, test_size=0.3, random_state=42)
 
+
+# hyperparameters
 params = {'n_estimators': 220,
           'max_depth': 4,
           'min_samples_split': 5,
@@ -702,7 +754,7 @@ params = {'n_estimators': 220,
           'loss': 'ls'}
 
 
-# In[550]:
+# In[98]:
 
 
 print(X_train_2.shape)
@@ -711,7 +763,9 @@ print(X_test_2.shape)
 print(y_test_2.shape)
 
 
-# In[551]:
+# # 5. Model Evaluation - Gradiant Boost
+
+# In[99]:
 
 
 reg = ensemble.GradientBoostingRegressor(**params)
@@ -722,7 +776,9 @@ y_pred_2=reg.predict(X_test_2)
 print("The mean squared error (MSE) on test set: {:.4f}".format(mse))
 
 
-# In[552]:
+# Slightly better than linear regression!
+
+# In[100]:
 
 
 test_score = np.zeros((params['n_estimators'],), dtype=np.float64)
@@ -743,7 +799,9 @@ fig.tight_layout()
 plt.show()
 
 
-# In[553]:
+# 220 is about the right number of estimators
+
+# In[101]:
 
 
 feature_importance = reg.feature_importances_
@@ -766,6 +824,8 @@ plt.title("Permutation Importance (test set)")
 fig.tight_layout()
 plt.show()
 
+
+# Answer for Question 3: The most important features are: calculated_host_listings_count,host_is_superhost, days_since_host. Looks like experience matters a lot! Price and other variables also play a role.
 
 # In[ ]:
 
